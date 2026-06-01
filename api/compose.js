@@ -1,0 +1,1 @@
+Get compose.js content
