@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎵 Compositor IA</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --card: #1a1a24;
+    --border: #2a2a3a;
+    --accent: #c8a96e;
+    --accent2: #7c6fff;
+    --text: #e8e4dc;
+    --muted: #6b6880;
+    --glow: rgba(200, 169, 110, 0.15);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(124,111,255,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(200,169,110,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .container {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeDown 0.8s ease both;
+  }
+  .logo { font-size: 11px; letter-spacing: 0.35em; color: var(--accent); text-transform: uppercase; margin-bottom: 16px; }
+  h1 { font-family: 'Playfair Display', serif; font-size: clamp(2.2rem, 6vw, 3.6rem); font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 12px; }
+  h1 em { font-style: italic; color: var(--accent); }
+  .subtitle { font-size: 13px; color: var(--muted); letter-spacing: 0.05em; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 20px;
+    animation: fadeUp 0.6s ease both;
+  }
+  .label {
+    font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  textarea {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 14px; line-height: 1.7; padding: 16px; resize: vertical; min-height: 100px;
+    transition: border-color 0.2s, box-shadow 0.2s; outline: none;
+  }
+  textarea::placeholder { color: var(--muted); }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  .select-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .select-label { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+  select {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-family: 'DM Mono', monospace;
+    font-size: 13px; padding: 10px 36px 10px 14px; outline: none; cursor: pointer;
+    transition: border-color 0.2s; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b6880' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center;
+  }
+  select:focus { border-color: var(--accent); }
+  .voice-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .chip {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 50px;
+    padding: 7px 14px; font-size: 12px; cursor: pointer; transition: all 0.18s;
+    user-select: none; color: var(--muted); display: flex; align-items: center; gap: 5px;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .chip.selected { background: rgba(200,169,110,0.12); border-color: var(--accent); color: var(--accent); }
+  button.generate {
+    width: 100%; background: linear-gradient(135deg, var(--accent) 0%, #d4b57c 100%);
+    color: #0a0a0f; border: none; border-radius: 10px; font-family: 'DM Mono', monospace;
+    font-size: 13px; font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase;
+    padding: 16px; cursor: pointer; transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s; margin-top: 20px;
+  }
+  button.generate:hover:not(:disabled) { opacity: 0.92; box-shadow: 0 8px 32px rgba(200,169,110,0.3); transform: translateY(-1px); }
+  button.generate:disabled { opacity: 0.45; cursor: not-allowed; }
+  .loader { display: none; align-items: center; justify-content: center; gap: 12px; padding: 28px; color: var(--muted); font-size: 13px; letter-spacing: 0.1em; }
+  .loader.active { display: flex; }
+  .dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+  .result-card { display: none; background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; animation: fadeUp 0.5s ease both; }
+  .result-card.visible { display: block; }
+  .result-header { background: linear-gradient(135deg, #1e1a2e, #1a1e2e); border-bottom: 1px solid var(--border); padding: 20px 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .result-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; font-style: italic; color: var(--accent); }
+  .tag { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; background: rgba(124,111,255,0.15); color: var(--accent2); border: 1px solid rgba(124,111,255,0.3); padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+  .lyrics-area { padding: 28px; font-family: 'Playfair Display', serif; font-size: 15px; line-height: 1.9; white-space: pre-wrap; color: var(--text); }
+  .lyrics-area .sec { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); font-family: 'DM Mono', monospace; display: block; margin: 20px 0 6px; font-style: normal; }
+  .sing-section { border-top: 1px solid var(--border); padding: 24px 28px; }
+  .sing-title { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .sing-title::after { content: ''; flex:1; height:1px; background: var(--border); }
+  .platform-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .platform-tab { background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.08em; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+  .platform-tab:hover { border-color: var(--accent2); color: var(--text); }
+  .platform-tab.active { background: rgba(124,111,255,0.12); border-color: var(--accent2); color: var(--accent2); }
+  .platform-info { display: none; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+  .platform-info.active { display: block; }
+  .platform-info strong { color: var(--text); display: block; margin-bottom: 6px; }
+  .platform-info a { display: inline-block; margin-top: 10px; color: var(--accent); text-decoration: none; font-size: 12px; letter-spacing: 0.08em; border: 1px solid var(--accent); padding: 7px 16px; border-radius: 6px; transition: all 0.2s; }
+  .platform-info a:hover { background: var(--glow); }
+  .style-box { margin-top: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .style-box-label { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  .style-box-text { font-style: italic; color: var(--accent2); font-size: 13px; }
+  .bottom-controls { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  button.action-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 0.08em; padding: 10px 18px; border-radius: 8px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 7px; }
+  button.action-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--glow); }
+  button.action-btn.playing { border-color: var(--accent2); color: var(--accent2); background: rgba(124,111,255,0.1); }
+  .wave-visual { display: none; align-items: center; gap: 3px; height: 20px; }
+  .wave-visual.active { display: flex; }
+  .wave-bar { width: 3px; background: var(--accent2); border-radius: 2px; animation: wave 1s ease-in-out infinite; }
+  .wave-bar:nth-child(1) { height: 6px; animation-delay: 0s; }
+  .wave-bar:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+  .wave-bar:nth-child(3) { height: 20px; animation-delay: 0.2s; }
+  .wave-bar:nth-child(4) { height: 14px; animation-delay: 0.3s; }
+  .wave-bar:nth-child(5) { height: 6px; animation-delay: 0.4s; }
+  .error-box { background: rgba(220,80,80,0.08); border: 1px solid rgba(220,80,80,0.25); border-radius: 10px; padding: 14px 18px; color: #e87878; font-size: 13px; line-height: 1.6; display: none; margin-bottom: 16px; }
+  .error-box.visible { display: block; }
+  @keyframes fadeDown { from { opacity:0; transform: translateY(-20px); } to { opacity:1; transform: translateY(0); } }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
+  @keyframes pulse { 0%,100% { transform: scale(0.6); opacity:0.4; } 50% { transform: scale(1); opacity:1; } }
+  @keyframes wave { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">✦ Compositor com IA ✦</div>
+    <h1>Escreva sua<br><em>próxima música</em></h1>
+    <p class="subtitle">ChatGPT compõe · Suno / Udio canta</p>
+  </header>
+
+  <div class="card">
+    <div class="label">Descreva sua música</div>
+    <textarea id="userPrompt" placeholder="Ex: Uma música sertaneja sobre saudade do interior, com refrão animado e verso melancólico..." rows="3"></textarea>
+    <div class="grid-2">
+      <div class="select-wrap">
+        <div class="select-label">Gênero</div>
+        <select id="genre">
+          <option value="">🎵 Livre</option>
+          <option value="sertanejo universitário">🤠 Sertanejo</option>
+          <option value="pagode">🥁 Pagode</option>
+          <option value="funk carioca">🎤 Funk</option>
+          <option value="MPB">🎸 MPB</option>
+          <option value="forró">🪗 Forró</option>
+          <option value="pop brasileiro">🎶 Pop</option>
+          <option value="rock nacional">🎸 Rock</option>
+          <option value="gospel">🙏 Gospel</option>
+          <option value="bossa nova">🌊 Bossa Nova</option>
+          <option value="axé">💃 Axé</option>
+        </select>
+      </div>
+      <div class="select-wrap">
+        <div class="select-label">Tom / Clima</div>
+        <select id="mood">
+          <option value="">✨ Qualquer</option>
+          <option value="romântico e apaixonado">💕 Romântico</option>
+          <option value="animado e dançante">💃 Animado</option>
+          <option value="melancólico e saudoso">😢 Melancólico</option>
+          <option value="motivacional e empoderador">💪 Motivacional</option>
+          <option value="engraçado e bem-humorado">😄 Engraçado</option>
+          <option value="espiritual e reflexivo">🕊️ Espiritual</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="animation-delay:0.1s">
+    <div class="label">Estilo de voz para cantar</div>
+    <div class="voice-chips" id="voiceChips">
+      <div class="chip selected" data-voice="voz feminina suave e delicada">👩 Feminina suave</div>
+      <div class="chip" data-voice="voz feminina poderosa e marcante">👸 Feminina poderosa</div>
+      <div class="chip" data-voice="voz masculina grave e intensa">👨 Masculina grave</div>
+      <div class="chip" data-voice="voz masculina suave e romântica">🧑 Masculina suave</div>
+      <div class="chip" data-voice="dueto entre voz masculina e feminina">👫 Dueto</div>
+      <div class="chip" data-voice="voz de coral com harmonia">🎶 Coral</div>
+      <div class="chip" data-voice="voz anasalada estilo sertanejo raiz">🎻 Sertanejo raiz</div>
+      <div class="chip" data-voice="voz rapper com flow urbano">🎤 Rap / Flow</div>
+    </div>
+  </div>
+
+  <button class="generate" id="generateBtn" onclick="generateMusic()">✦ Compor minha música</button>
+  <div style="height:20px"></div>
+
+  <div class="loader" id="loader">
+    <div class="dots"><span></span><span></span><span></span></div>
+    Compondo sua música...
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="result-card" id="resultCard">
+    <div class="result-header">
+      <div class="result-title" id="songTitle">♪ Sua música</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="wave-visual" id="waveVisual">
+          <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+          <div class="wave-bar"></div><div class="wave-bar"></div>
+        </div>
+        <span class="tag" id="genreTag">Música</span>
+      </div>
+    </div>
+
+    <div class="lyrics-area" id="lyricsOutput"></div>
+
+    <div class="sing-section">
+      <div class="sing-title">🎤 Onde fazer cantar</div>
+      <div class="platform-tabs">
+        <button class="platform-tab active" onclick="switchTab(event,'suno')">Suno.ai</button>
+        <button class="platform-tab" onclick="switchTab(event,'udio')">Udio.com</button>
+        <button class="platform-tab" onclick="switchTab(event,'mureka')">Mureka.ai</button>
+      </div>
+
+      <div class="platform-info active" id="tab-suno">
+        <strong>🔵 Suno.ai — gratuito, até 50 músicas/dia</strong>
+        1. Acesse Suno.ai e faça login<br>
+        2. Clique em <em>Create → Custom Mode</em><br>
+        3. Cole a letra no campo <em>Lyrics</em><br>
+        4. Cole o estilo abaixo no campo <em>Style of Music</em><br>
+        5. Clique em <em>Create</em>!
+        <div class="style-box">
+          <div class="style-box-label">Estilo gerado para colar:</div>
+          <div class="style-box-text" id="sunoStyle">— gere a música primeiro —</div>
+        </div>
+        <a href="https://suno.com/create" target="_blank">↗ Abrir Suno.ai</a>
+      </div>
+
+      <div class="platform-info" id="tab-udio">
+        <strong>🟣 Udio.com — alta qualidade, gratuito com conta</strong>
+        1. Acesse Udio.com e faça login<br>
+        2. Cole a letra e as tags de estilo abaixo<br>
+        3. Clique em <em>Create</em>!
+        <div class="style-box">
+          <div class="style-box-label">Tags para Udio:</div>
+          <div class="style-box-text" id="udioStyle">— gere a música primeiro —</div>
+        </div>
+        <a href="https://www.udio.com" target="_blank">↗ Abrir Udio.com</a>
+      </div>
+
+      <div class="platform-info" id="tab-mureka">
+        <strong>🟠 Mureka.ai — controle de voz avançado</strong>
+        1. Acesse Mureka.ai<br>
+        2. Escolha <em>Lyrics to Song</em><br>
+        3. Cole a letra e selecione o estilo de voz<br>
+        4. Gere!
+        <div class="style-box">
+          <div class="style-box-label">Sugestão de estilo:</div>
+          <div class="style-box-text" id="murekaStyle">— gere a música primeiro —</div>
+        </div>
+        <a href="https://mureka.ai" target="_blank">↗ Abrir Mureka.ai</a>
+      </div>
+
+      <div class="bottom-controls">
+        <button class="action-btn" id="previewBtn" onclick="toggleSpeech()">▶ Pré-ouvir</button>
+        <button class="action-btn" onclick="copyLyrics()">⎘ Copiar letra</button>
+        <button class="action-btn" onclick="copyStyle()">⎘ Copiar estilo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentLyrics = '';
+  let currentStyle = '';
+  let speaking = false;
+  let selectedVoice = 'voz feminina suave e delicada';
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      selectedVoice = chip.dataset.voice;
+    });
+  });
+
+  function switchTab(e, tab) {
+    document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.platform-info').forEach(p => p.classList.remove('active'));
+    e.target.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+  }
+
+  async function generateMusic() {
+    const prompt = document.getElementById('userPrompt').value.trim();
+    const genre = document.getElementById('genre').value;
+    const mood = document.getElementById('mood').value;
+
+    if (!prompt) { showError('Descreva a música que você quer criar!'); return; }
+    hideError();
+    setLoading(true);
+
+    let fullPrompt = `Você é um compositor musical brasileiro talentoso.
+Crie uma letra de música COMPLETA com estrutura clara usando marcadores: [ESTROFE 1], [PRÉ-REFRÃO], [REFRÃO], [ESTROFE 2], [PONTE].
+Comece com o TÍTULO na primeira linha (só o título).
+Após a letra, adicione:
+ESTILO_SUNO: (prompt curto em inglês para o Suno, ex: "brazilian sertanejo, male voice, emotional, acoustic guitar")
+ESTILO_UDIO: (tags separadas por vírgula em inglês)
+
+Tema: ${prompt}`;
+    if (genre) fullPrompt += `\nGênero: ${genre}`;
+    if (mood) fullPrompt += `\nClima: ${mood}`;
+    fullPrompt += `\nEstilo de voz: ${selectedVoice}`;
+
+    try {
+      const res = await fetch('/api/compose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: fullPrompt })
+      });
+
+      const data = await res.json();
+      if (data.error) { showError('Erro: ' + data.error); setLoading(false); return; }
+      processResult(data.text, genre, mood);
+    } catch(e) {
+      showError('Erro de conexão. Tente novamente.');
+    }
+    setLoading(false);
+  }
+
+  function processResult(text, genre, mood) {
+    currentLyrics = text;
+    const sunoMatch = text.match(/ESTILO_SUNO:\s*(.+)/);
+    const udioMatch = text.match(/ESTILO_UDIO:\s*(.+)/);
+    const sunoStyle = sunoMatch ? sunoMatch[1].trim() : [genre, selectedVoice].filter(Boolean).join(', ');
+    const udioStyle = udioMatch ? udioMatch[1].trim() : sunoStyle;
+    currentStyle = sunoStyle;
+
+    document.getElementById('sunoStyle').textContent = sunoStyle;
+    document.getElementById('udioStyle').textContent = udioStyle;
+    document.getElementById('murekaStyle').textContent = [selectedVoice, genre, mood].filter(Boolean).join(', ');
+
+    let mainText = text.replace(/ESTILO_SUNO:.+/g,'').replace(/ESTILO_UDIO:.+/g,'').trim();
+    const lines = mainText.split('\n');
+    const title = lines[0].replace(/^#\s*/,'').trim();
+
+    let html = '';
+    for (let line of lines.slice(1)) {
+      const t = line.trim();
+      if (!t) { html += '\n'; continue; }
+      if (/^\[.+\]$/.test(t)) {
+        html += `<span class="sec">${t.replace(/[\[\]]/g,'')}</span>`;
+      } else {
+        html += t + '\n';
+      }
+    }
+
+    document.getElementById('songTitle').textContent = title || '♪ Sua música';
+    document.getElementById('lyricsOutput').innerHTML = html;
+    document.getElementById('genreTag').textContent = genre || 'Livre';
+    document.getElementById('resultCard').classList.add('visible');
+    document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function toggleSpeech() {
+    if (!currentLyrics) return;
+    const btn = document.getElementById('previewBtn');
+    if (speaking) {
+      speechSynthesis.cancel();
+      speaking = false;
+      btn.innerHTML = '▶ Pré-ouvir';
+      btn.classList.remove('playing');
+      document.getElementById('waveVisual').classList.remove('active');
+      return;
+    }
+    const clean = currentLyrics.replace(/ESTILO_SUNO:.+/g,'').replace(/ESTILO_UDIO:.+/g,'').replace(/\[.+?\]/g,'').trim();
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.lang = 'pt-BR';
+    utt.rate = 0.85;
+    utt.pitch = selectedVoice.includes('feminina') ? 1.3 : selectedVoice.includes('grave') ? 0.7 : 1.0;
+    const voices = speechSynthesis.getVoices();
+    const ptVoice = voices.find(v => v.lang.includes('pt'));
+    if (ptVoice) utt.voice = ptVoice;
+    utt.onend = () => {
+      speaking = false;
+      btn.innerHTML = '▶ Pré-ouvir';
+      btn.classList.remove('playing');
+      document.getElementById('waveVisual').classList.remove('active');
+    };
+    speechSynthesis.speak(utt);
+    speaking = true;
+    btn.innerHTML = '■ Parar';
+    btn.classList.add('playing');
+    document.getElementById('waveVisual').classList.add('active');
+  }
+
+  function copyLyrics() {
+    const clean = currentLyrics.replace(/ESTILO_SUNO:.+/g,'').replace(/ESTILO_UDIO:.+/g,'').trim();
+    navigator.clipboard.writeText(clean).then(() => {
+      const btn = event.target; btn.textContent = '✓ Copiado!';
+      setTimeout(() => btn.textContent = '⎘ Copiar letra', 2000);
+    });
+  }
+
+  function copyStyle() {
+    navigator.clipboard.writeText(currentStyle).then(() => {
+      const btn = event.target; btn.textContent = '✓ Copiado!';
+      setTimeout(() => btn.textContent = '⎘ Copiar estilo', 2000);
+    });
+  }
+
+  function setLoading(on) {
+    document.getElementById('loader').classList.toggle('active', on);
+    document.getElementById('generateBtn').disabled = on;
+    if (on) document.getElementById('resultCard').classList.remove('visible');
+  }
+  function showError(msg) { const b = document.getElementById('errorBox'); b.textContent = msg; b.classList.add('visible'); }
+  function hideError() { document.getElementById('errorBox').classList.remove('visible'); }
+  speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+</script>
+</body>
+</html>
